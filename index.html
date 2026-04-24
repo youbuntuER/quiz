@@ -1544,6 +1544,15 @@
                 });
             }
 
+            async function removeTagFromContact(contactId, tagId) {
+                await fetch(PROXY_URL + '/contacts/' + contactId + '/tags/' + tagId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+
             async function submitForm() {
                 const prenomInput = document.getElementById('input-prenom').value.trim();
                 const emailInput = document.getElementById('input-email').value.trim();
@@ -1605,11 +1614,23 @@
                         }
                     }
 
-                    /* 3. Trouver et ajouter les tags */
-                    const tagNames = ['visage-' + top1, 'visage-' + top2, 'quiz-complete'];
+                    /* 3. Récupérer tous les tags disponibles */
                     const tagsData = await sioFetch('/tags?limit=100', 'GET', null);
                     const allTags = tagsData.items || [];
 
+                    /* 4. Retirer les anciens tags visage-* et sous-visage-* du contact */
+                    const contactData = await sioFetch('/contacts/' + contact.id, 'GET', null);
+                    const currentTags = contactData.tags || [];
+                    for (const ct of currentTags) {
+                        if (ct.name && (ct.name.startsWith('visage-') || ct.name.startsWith('sous-visage-'))) {
+                            try {
+                                await removeTagFromContact(contact.id, ct.id);
+                            } catch(e) { /* ignore */ }
+                        }
+                    }
+
+                    /* 5. Ajouter les nouveaux tags : dominant, secondaire, quiz-complete */
+                    const tagNames = ['visage-' + top1, 'sous-visage-' + top2, 'quiz-complete'];
                     for (const tName of tagNames) {
                         const tag = allTags.find(t => t.name === tName);
                         if (tag) {
