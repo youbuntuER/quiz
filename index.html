@@ -1618,18 +1618,21 @@
                     const tagsData = await sioFetch('/tags?limit=100', 'GET', null);
                     const allTags = tagsData.items || [];
 
-                    /* 4. Retirer les anciens tags visage-* et sous-visage-* du contact */
+                    /* 4. Retirer les anciens tags visage-*, sous-visage-* ET quiz-complete du contact */
                     const contactData = await sioFetch('/contacts/' + contact.id, 'GET', null);
                     const currentTags = contactData.tags || [];
                     for (const ct of currentTags) {
-                        if (ct.name && (ct.name.startsWith('visage-') || ct.name.startsWith('sous-visage-'))) {
+                        if (ct.name && (ct.name.startsWith('visage-') || ct.name.startsWith('sous-visage-') || ct.name === 'quiz-complete')) {
                             try {
                                 await removeTagFromContact(contact.id, ct.id);
                             } catch(e) { /* ignore */ }
                         }
                     }
 
-                    /* 5. Ajouter les nouveaux tags : dominant, secondaire, quiz-complete */
+                    /* 5. Petit délai pour que systeme.io enregistre la suppression */
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+
+                    /* 6. Ajouter les nouveaux tags : dominant, secondaire, quiz-complete */
                     const tagNames = ['visage-' + top1, 'sous-visage-' + top2, 'quiz-complete'];
                     for (const tName of tagNames) {
                         const tag = allTags.find(t => t.name === tName);
@@ -1658,7 +1661,8 @@
                 const sorted = Object.entries(scores).sort( (a, b) => b[1] - a[1]);
                 const top1 = sorted[0][0];
                 const top2 = sorted[1][0];
-                document.getElementById('resultat-msg').textContent = `Voici le miroir que tes réponses ont tracé. Accueille-le comme une invitation, pas comme une sentence.`;
+                const prenomTxt = prenom ? (prenom + ', v') : 'V';
+                document.getElementById('resultat-msg').textContent = prenomTxt + `oici le miroir que tes réponses ont tracé. Accueille-le comme une invitation, pas comme une sentence.`;
                 buildRadar(scores);
                 document.getElementById('fiche-1').innerHTML = buildFiche(top1, 1);
                 document.getElementById('fiche-2').innerHTML = buildFiche(top2, 2);
